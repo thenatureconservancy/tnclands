@@ -1,0 +1,237 @@
+PathToBackup = r'D:\PLATT\Workspace\Data\TNC Lands\Archive\Data'
+BackUpGDB = 'BackUp_YYYYMMDD.gdb'
+BackUpPath = os.path.join(PathToBackup, BackUpGDB)
+logfile = 'log.txt'
+#----------------------------------------------------------------------'
+#Create backup file geodatabase
+arcpy.CreateFileGDB_management(PathToBackup, BackupGDB, "Current")
+#----------------------------------------------------------------------
+#copy TNC_Lands_Edit to backup gdb
+arcpy.FeatureClassToFeatureClass_conversion(
+"Database Connections/saeditor @ TNC_Lands_Edit.mnsde.tnc.sde/tncgdb.NACRLOADER.TNC_Lands",
+BackUpPath,"TNC_Lands_Edit")
+
+#copy Transferred_TNC_Lands_Edit to backup gdb
+arcpy.FeatureClassToFeatureClass_conversion(
+"Database Connections/saeditor @ TNC_Lands_Edit.mnsde.tnc.sde/tncgdb.NACRLOADER.Transferred_TNC_Lands",
+BackUpPath,"Transferred_TNC_Lands_Edit")
+#----------------------------------------------------------------------
+#copy TNC_Lands_QA to backup gdb
+arcpy.FeatureClassToFeatureClass_conversion(
+"Database Connections/nacrloader @ TNC_Lands_QA.mnsde.tnc.sde/tncgdb.NACRLOADER.TNC_Lands",
+BackUpPath,"TNC_Lands_QA")
+
+#copy Transferred_TNC_Lands_QA to backup gdb
+arcpy.FeatureClassToFeatureClass_conversion(
+"Database Connections/nacrloader @ TNC_Lands_QA.mnsde.tnc.sde/tncgdb.NACRLOADER.Transferred_TNC_Lands",
+BackUpPath,"Transferred_TNC_Lands_QA")
+#----------------------------------------------------------------------
+#copy TNC_Lands_Default to backup gdb
+arcpy.FeatureClassToFeatureClass_conversion(
+"Database Connections/nacrloader @ default.mnsde.tnc.sde/tncgdb.NACRLOADER.TNC_Lands",
+BackUpPath,"TNC_Lands_Default")
+
+#copy Transferred_TNC_Lands_Default to backup gdb
+arcpy.FeatureClassToFeatureClass_conversion(
+"Database Connections/nacrloader @ default.mnsde.tnc.sde/tncgdb.NACRLOADER.Transferred_TNC_Lands",
+BackUpPath,"Transferred_TNC_Lands_Default")
+#----------------------------------------------------------------------
+#Set TNC_Lands_QA to public
+arcpy.AlterVersion_management("Database Connections/nacrloader @ TNC_Lands_QA.mnsde.tnc.sde", "TNC_Lands_QA", "#", "#", "PUBLIC")
+
+#Set Transferred_TNC_Lands_QA to public
+arcpy.AlterVersion_management("Database Connections/nacrloader @ Transferred_TNC_Lands_QA.mnsde.tnc.sde", "Transferred_TNC_Lands_QA", "#", "#", "PUBLIC")
+#--------------------------------------------------------------------------------------------
+#reconcile and post TNC_Lands_Edit to TNC_Lands_QA
+workspace = "Database Connections/saeditor @ TNC_Lands_Edit.mnsde.tnc.sde"
+arcpy.ReconcileVersions_management(workspace, "ALL_VERSIONS", "TNC_Lands_QA", "TNC_Lands_Edit", "LOCK_AQUIRED", "ABORT_CONFLICTS",
+"BY_OBJECT", "FAVOR_EDIT_VERSION", "POST", "KEEP_VERSION", logfile)
+
+#reconcile and post TNC_Lands_QA to Default
+workspace = "Database Connections/nacrloader @ TNC_Lands_QA.mnsde.tnc.sde"
+arcpy.ReconcileVersions_management(workspace, "ALL_VERSIONS", "Default", "TNC_Lands_QA", "LOCK_AQUIRED", "ABORT_CONFLICTS",
+"BY_OBJECT", "FAVOR_EDIT_VERSION", "POST", "KEEP_VERSION", logfile)
+#----------------------------------------------------------------------
+#reconcile and post Transferred_TNC_Lands_Edit to Transferred_TNC_Lands_QA
+workspace = "Database Connections/saeditor @ Transferred_TNC_Lands_Edit.mnsde.tnc.sde"
+arcpy.ReconcileVersions_management(workspace, "ALL_VERSIONS", "Transferred_TNC_Lands_QA", "Transferred_TNC_Lands_Edit", "LOCK_AQUIRED", "ABORT_CONFLICTS",
+"BY_OBJECT", "FAVOR_EDIT_VERSION", "POST", "KEEP_VERSION", logfile)
+
+#reconcile and post Transferred_TNC_Lands_QA to Default
+workspace = "Database Connections/nacrloader @ Transferred_TNC_Lands_QA.mnsde.tnc.sde"
+arcpy.ReconcileVersions_management(workspace, "ALL_VERSIONS", "Default", "Transferred_TNC_Lands_QA", "LOCK_AQUIRED", "ABORT_CONFLICTS",
+"BY_OBJECT", "FAVOR_EDIT_VERSION", "POST", "KEEP_VERSION", logfile)
+#----------------------------------------------------------------------
+Check TNC_Lands edit against TNC_Lands_QA
+Check TNC_Lands_QA edit against Default
+
+Check Transferred_TNC_Lands_Edit against Transferred_TNC_Lands_QA
+Check Transferred_TNC_Lands_QA against Default
+#----------------------------------------------------------------------
+#Set TNC_Lands_QA to protected
+arcpy.AlterVersion_management("Database Connections/nacrloader @ TNC_Lands_QA.mnsde.tnc.sde", "TNC_Lands_QA", "#", "#", "PROTECTED")
+
+#Set Transferred_TNC_Lands_QA to protected
+arcpy.AlterVersion_management("Database Connections/nacrloader @ Transferred_TNC_Lands_QA.mnsde.tnc.sde", "Transferred_TNC_Lands_QA", "#", "#", "PROTECTED")
+#--------------------------------------------------------------------------------------
+'--------------------------------------------------------------------------------------
+'--------------------------------------------------------------------------------------
+'--------------------------------------------------------------------------------------
+
+Check to see who's connected and if there are any table locks
+
+--------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------
+
+Copy edit version of TNC Lands feature class
+Copy default version of TNC Lands feature class
+
+Copy edit version of Transferred TNC Lands feature class
+Copy default version of Transferred TNC Lands feature class
+
+--------------------------------------------------------------------------------------
+
+Rec and post changes from TNC Lands edit version to QA version 
+Rec and post changes from Transferred TNC Lands edit version to QA version
+
+--------------------------------------------------------------------------------------
+
+Verify results
+
+--------------------------------------------------------------------------------------
+
+Rec and post changes from TNC Lands QA version to default version 
+Rec and post changes from Transferred TNC Lands QA version to default version
+
+--------------------------------------------------------------------------------------
+
+Verify results
+
+--------------------------------------------------------------------------------------
+
+Copy TNC Lands default version
+Copy Transferred TNC Lands default version
+
+--------------------------------------------------------------------------------------
+
+Delete TNC_Lands_Edit version 
+Delete Transferred_TNC_Lands_Edit version
+
+Delete TNC_Lands_QA version 
+Delete Transferred_TNC_Lands_QA version
+
+--------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------
+
+Revoke select privileges from CREDITOR, CRLOADER, MN_NHIVIEWER, MNSDE_VIEWER, NACREDITOR, NHILOADER, TNC_VIEWER, VENTYX_STEWARD, VENTYX_VIEWER on TNC_Lands
+Revoke select, insert, update, delete privileges from SAEDITOR on TNC_Lands
+
+Revoke select privileges from CREDITOR, CRLOADER, MN_NHIVIEWER, MNSDE_VIEWER, NACREDITOR, NHILOADER, TNC_VIEWER, VENTYX_STEWARD, VENTYX_VIEWER on Transferred_TNC_Lands
+Revoke select, insert, update, delete privileges from SAEDITOR on Transferred_TNC_Lands
+
+--------------------------------------------------------------------------------------
+
+Delete the following fields:
+
+AREANAM2, DESGNTN2, AGENCY, CONSTAT, TENUREEXP, IUCNCAT, PROTMECH2, PROTPROG, PROTDATE, PROTDATPR, CF, SOURCE_ID
+INT_HOLD, DSGNTN_L, DSGNTN_L2, STATUS, LEGAL_REC, CMS_INTENT, CMS_DURATN, CMS_EMP, QC_EXCEPT, OWNER, DESGNTN
+
+arcpy.DeleteField_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb/TNC_Lands",
+["AREANAM2", "DESGNTN2", "AGENCY", "CONSTAT", "TENUREEXP", "IUCNCAT", "PROTMECH2", "PROTPROG", "PROTDATE", "PRODATPR", "CF", "SOURCE_ID", "
+INT_HOLD", "DSGNTN_L", "DSGNTN_L2", "STATUS", "LEGAL_REC", "CMS_INTENT", "CMS_DURATN", "CMS_EMP", "QC_EXCEPT", "OWNER", "DESGNTN"])
+
+--------------------------------------------------------------------------------------
+
+Add the following fields:
+
+TAXID      TEXT 255 NULLABLE Current Tax Parcel ID
+HISTAXID   TEXT 255 NULLABLE Historic Tax Parcel ID(s) 
+GLOT       TEXT 255 NULLABLE Government Lot Number
+SUBD       TEXT 255 NULLABLE Subdivision
+BLOCK      TEXT 4000 NULLABLE Block
+
+arcpy.AddField_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb/TNC_Lands","TAXID","TEXT","#","#","255","Current Tax Parcel ID","NULLABLE","NON_REQUIRED","#")
+arcpy.AddField_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb/TNC_Lands","HISTAXID","TEXT","#","#","255","Historic Tax Parcel ID(s)","NULLABLE","NON_REQUIRED","#")
+arcpy.AddField_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb/TNC_Lands","GLOT","TEXT","#","#","255","Government Lot Number","NULLABLE","NON_REQUIRED","#")
+arcpy.AddField_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb/TNC_Lands","SUBD","TEXT","#","#","255","Subdivision","NULLABLE","NON_REQUIRED","#")
+arcpy.AddField_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb/TNC_Lands","BLOCK","TEXT","#","#","4000","Block","NULLABLE","NON_REQUIRED","#")
+
+--------------------------------------------------------------------------------------
+Remove domain from following fields:
+STATE, GAPCAT, PROTMECH, COUNTRY, SENSDATA
+
+arcpy.RemoveDomainFromField_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb/TNC_Lands","OWNER","#")
+arcpy.RemoveDomainFromField_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb/TNC_Lands","GAPCAT","#")
+arcpy.RemoveDomainFromField_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb/TNC_Lands","PROTMECH","#")
+arcpy.RemoveDomainFromField_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb/TNC_Lands","COUNTRY","#")
+arcpy.RemoveDomainFromField_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb/TNC_Lands","SENSDATA","#")
+
+Delete Domains
+arcpy.DeleteDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","std_CMS_EMP")
+arcpy.DeleteDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","std_CF")
+arcpy.DeleteDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","std_CMS_DURATN")
+arcpy.DeleteDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","std_CMS_INTENT")
+arcpy.DeleteDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","std_CONSTAT")
+arcpy.DeleteDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","std_IUCNCAT")
+arcpy.DeleteDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","std_PRODATPR")
+arcpy.DeleteDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","std_STATUS")
+
+arcpy.DeleteDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","std_COUNTRY")
+arcpy.DeleteDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","std_SENSDATA")
+arcpy.DeleteDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","std_OWNER")
+arcpy.DeleteDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","std_STATE")
+arcpy.DeleteDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","std_GAPCAT")
+arcpy.DeleteDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","lio_PROTMECH")
+arcpy.DeleteDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","std_DESGNTN")
+
+Create domains from tables
+arcpy.TableToDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/TNC_Lands/tnc_COUNTRY.dbf","CODE","DESC","D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","tnc_COUNTRY","DESC","APPEND")
+arcpy.TableToDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/TNC_Lands/tnc_STATE.dbf","CODE","DESC","D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","tnc_STATE","DESC","APPEND")
+arcpy.TableToDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/TNC_Lands/tnc_SENSDATA.dbf","CODE","DESC","D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","tnc_SENSDATA","DESC","APPEND")
+arcpy.TableToDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/TNC_Lands/tnc_GAPCAT.dbf","CODE","DESC","D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","tnc_GAPCAT","DESC","APPEND")
+arcpy.TableToDomain_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/TNC_Lands/tnc_PROTMECH.dbf","CODE","DESC","D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb","tnc_PROTMECH","DESC","APPEND")
+
+
+Add domains to fields
+arcpy.AssignDomainToField_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb/TNC_Lands","COUNTRY","tnc_COUNTRY","#")
+arcpy.AssignDomainToField_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb/TNC_Lands","GAPCAT","tnc_GAPCAT","#")
+arcpy.AssignDomainToField_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb/TNC_Lands","PROTMECH","tnc_PROTMECH","#")
+arcpy.AssignDomainToField_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb/TNC_Lands","SENSDATA","tnc_SENSDATA","#")
+arcpy.AssignDomainToField_management("D:/Workspace/Data/NACR/TNC Lands/Data/Domains/migration.gdb/TNC_Lands","STATE","tnc_STATE","#")
+
+--------------------------------------------------------------------------------------
+
+Create TNC_Lands_QA version 
+
+Create TNC_Lands_Edit version
+
+Create Transferred_TNC_Lands_QA version 
+
+Create Transferred_TNC_Lands_edit version 
+
+Grant select privileges to CREDITOR, CRLOADER, MN_NHIVIEWER, MNSDE_VIEWER, NACREDITOR, NHILOADER, TNC_VIEWER, VENTYX_STEWARD, VENTYX_VIEWER on TNC_Lands
+Grant select, insert, update, delete privileges to SAEDITOR on TNC_Lands
+
+Grant select privileges to CREDITOR, CRLOADER, MN_NHIVIEWER, MNSDE_VIEWER, NACREDITOR, NHILOADER, TNC_VIEWER, VENTYX_STEWARD, VENTYX_VIEWER on Transferred_TNC_Lands
+Grant select, insert, update, delete privileges to SAEDITOR on Transferred_TNC_Lands
+
+Compress database
+
+-----------------------------------------------------------------------------------------------
+arcpy.management.AddField("TNC_Lands_template", "LRM_TRACT_ID", "LONG", None, None, None, '', "NULLABLE", "REQUIRED", '')
+arcpy.management.AddField("TNC_Lands_template", "LRM_TRACT_NAME", "TEXT", None, None, 512, "Land Resource Management Tract Name", "NULLABLE", "REQUIRED", '')
+arcpy.management.AddField("TNC_Lands_template", "COUNTRY_NAME", "TEXT", None, None, 512, "Country Name", "NULLABLE", "REQUIRED", '')
+arcpy.management.AddField("TNC_Lands_template", "STATE_GEOCODE", "TEXT", None, None, 2, "Two-letter US Postal Code State Abbreviation", "NULLABLE", "REQUIRED", '')
+arcpy.management.AddField("TNC_Lands_template", "PUBLIC_AREA_NAME", "TEXT", None, None, 512, "The primary public name of the property", "NULLABLE", "REQUIRED", '')
+arcpy.management.AddField("TNC_Lands_template", "LRM_CONS_AREA_NAME", "TEXT", None, None, 512, "The conservation area name in LRM", "NON_NULLABLE", "REQUIRED", '')
+
+
+
+
+
+
+
+
+
+
+
