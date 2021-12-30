@@ -1,19 +1,30 @@
 #Standard imports
 import os
-import arcpy
+import sys
 #---------------------------------------------------------------------
 #Non-standard imports
-    #None
+import arcpy
 #---------------------------------------------------------------------
 #arcpy environment settings
 arcpy.env.overwriteOutput = True
 #---------------------------------------------------------------------
 '''Outline:
     set up paths to resources
+    
     convert LRM Excel to geodatabase table
-    check for fields in new table(?)
-    create search cursor on LRM table
-    check for field in TNC Lands spatial data(?)
+    TODO: check for fields in new table(?)
+    
+    TODO: create search cursor on LRM table
+    TODO: check for field in TNC Lands spatial data(?)
+    
+    TODO: create search cursor on LRM table
+    TODO: create dictionary of tract ids, tract name and state
+    TODO: create search cursor on TNC Lands spatial data
+    TODO: create dictionary of tract ids tract name and state
+
+    TODO: check LRM against TNC Lands dictionary
+    TODO: check TNC Lands against LRM dictionary
+    
     create update cursor on TNC Lands spatial data
     step through LRM search cursor and update corresponding
       TNC Lands spatial data
@@ -24,6 +35,7 @@ def createTNCLandsCodeList():
     #Not entirely sure if this will be necessary, but the function is present, just in case.
     #Coded domain lists are used to check that the TNC Interest have have valid entries
     print('Creating TNC Interest coded domain list')
+    print(arcpy.AddMessage('Creating TNC Interest coded domain list'))
     #TNC Lands (not LRM) interest codes
     lstTNCInt = ['Fee Ownership', 'Conservation Easement', 'Deed Restrictions', 'Deed Restrictions - MonReq', 'Deed Restrictions - NoMon', 
     'Management Lease or greement', 'Timber Lease or Agreement', 'Grazing Lease', 'Grazing Permit', 'Life Estate', 
@@ -31,15 +43,23 @@ def createTNCLandsCodeList():
     'Assist - Deed Restriction', 'Transfer', 'Transfer - Fee Ownership', 'Transfer - Conservation Easement', 
     'Transfer - Deed Restriction', 'Transfer - Life Estate', 'Transfer - Management Lease or Agreement', 'Transfer - Agreement']
     return lstTNCInt
+    pass
+
 def createGAPCATDictionary():
     #create dictionary of GAP codes
+    print('Creating GAP category dictionary')
+    print(arcpy.AddMessage('Creating GAP category dictionary'))
     dictGAPCAT = {'1': 'managed for biodiversity; disturbance events proceed or are mimicked',
                   '2': 'managed for biodiversity; disturbance events suppressed',
                   '3': 'managed for multiple uses; subject to extractive (eg. mining or logging) or OHV use',
                   '4': 'no known mandate for biodiversity protection'}
     return dictGAPCAT
+    pass
+
 def createMapSymbolDictionary():
     #create map symbol dictionary
+    print('Creating map symbol dictionary')
+    print(arcpy.AddMessage('Creating map symbol dictionary'))
     dictMapSymbol = {'Fee Ownership' : 'Fee Ownership',
                      'Conservation Easement' : 'Conservation Easement', 
                      'Deed Restrictions' : 'Deed Restrictions',
@@ -65,44 +85,48 @@ def createMapSymbolDictionary():
                      'Transfer - Agreement' : 'Transfer'
                      }
     return dictMapSymbol
+    pass
+
 #---------------------------------------------------------------------
 def createLRMFieldList():
+    print('Creating LRM field list')
+    print(arcpy.AddMessage('Creating LRM field list'))
     lstLRMField = ['LRM Tract ID', 'Tract Name', 'Country', 'Primary Geocode', 'Primary Cons Area Name', 'Interest Holder', 
                    'Interest Code','Interest Acres', 'Original Protection Date', 'LRM MU ID', 'Monitoring Unit Name', 
                    'Primary Fee owner name']
     return lstLRMField
+    pass
+
 def createTNCLandsFieldList():
+    print('Creating TNC Lands field list')
+    print(arcpy.AddMessage('Creating TNC Lands field list'))    
     lstTNCLandsField = ['LRM_TR_ID', 'LRM_TR_NA', 'COUNTRY', 'STATE', 'CONS_AREA', 'PROTHOLD',
                         'TNC_INT', 'LRM_ACRES', 'PROT_DATE', 'LRM_MU_ID', 'LRM_MU_NA', 
                         'FEE_OWNER', 'MAP_SYM']
     return lstTNCLandsField
-def setPaths():
     pass
-def createLRMTable():
-    pass
-def createLRMSeachCursor():
-    pass
-def createTNCLandsUpdateCursor():
-    pass
-def updateTNCLands():
-    pass
-#---------------------------------------------------------------------
-def main():
-    MAPSYMBOLDICT = createMapSymbolDictionary()
-    LRMFIELDLIST = createLRMFieldList()
-    TNCLANDSFIELDLIST = createTNCLandsFieldList()
-    #set path to LRM report
-    print('Setting LRM path and sheet/tab name')
-    lrmPath = 'D:/jplatt/projects/TNC_Lands/data/Fee_CE_Assessments/NAR Fee & Eas report 12-21-21.xlsx'
-    lrmSheetName = 'Sheet1'
-    #---------------------------------------------------------------------
-    #set path to target or working file geodatabase
-    print('Setting working file geodatabase path')
-    gdbPath = 'D:/jplatt/projects/TNC_Lands/data/TNC_Lands_working.gdb'
-    tncLands = 'TNC_Lands_Base'
+
+def setPaths(gdbPath, tncLandsFC):
+    # #set path to LRM report
+    # print('Setting LRM path and sheet/tab name')
+    # print(arcpy.AddMessage('Setting LRM path and sheet/tab name'))
+
+    # lrmPath = 'D:/jplatt/projects/TNC_Lands/data/Fee_CE_Assessments/NAR Fee & Eas report 12-21-21.xlsx'
+    # lrmSheetName = 'Sheet1'
+    
+    # #set path to target or working file geodatabase
+    # print('Setting working file geodatabase path')
+    # print(arcpy.AddMessage('Setting working file geodatabase path'))
+    # gdbPath = 'D:/jplatt/projects/TNC_Lands/data/TNC_Lands_working.gdb'
+    # tncLands = 'TNC_Lands_Base'
+    
     print('Setting path to TNC Lands Base')
-    tncLandsPath = os.path.join(gdbPath, tncLands)
-    #---------------------------------------------------------------------
+    print(arcpy.AddMessage('Setting path to TNC Lands Base'))
+    tncLandsPath = os.path.join(gdbPath, tncLandsFC)
+    return tncLandsPath
+    pass
+    
+def createLRMTable(gdbPath, lrmPath, lrmSheetName):
     #delete previous LRM report table in the file geodatabase
     print('Deleting previous LRM table')
     if arcpy.Exists(os.path.join(gdbPath, 'lrmReport')):
@@ -134,7 +158,16 @@ def main():
         print(arcpy.GetMessages(2))
     except Exception as e:
         print(e.args[0])
-    #---------------------------------------------------------------------
+    
+    return True
+
+def createLRMSeachCursor():
+    pass
+def createTNCLandsSearchCursor():
+    pass
+def createTNCLandsUpdateCursor():
+    pass
+def updateTNCLands():
     #start checking LRM fields
     #create search cursor on LRM table
     print('Creating search cursor on LRM report table and update cursor on TNC Lands\nand beginning TNC Lands update process')
@@ -151,7 +184,30 @@ def main():
             print(arcpy.GetMessages(2))
         except Exception as e:
             print(e.args[0])
-    #---------------------------------------------------------------------
+    
+#---------------------------------------------------------------------
+def main():
+    '''
+    MAPSYMBOLDICT = createMapSymbolDictionary()
+    LRMFIELDLIST = createLRMFieldList()
+    TNCLANDSFIELDLIST = createTNCLandsFieldList()
+    LRMPATH = arcpy.GetParameterAsText[0]
+    LRMSHEETNAME = arcpy.GetParameterAsText[1]
+    GDPPATH = arcpy.GetParameterAsText[2]
+    FC = arcpy.GetParameterAsText[3]
+    '''
+    LRMPATH = sys.argv[1]
+    LRMSHEETNAME = sys.argv[2]
+    GDBPATH = sys.argv[3]
+    FC = sys.argv[4]
+
+    # print(f"{LRMPATH}, {LRMSHEETNAME}, {GDBPATH}, {FC}")
+
+    tncLandsPath = setPaths(GDBPATH, FC)
+    result = createLRMTable(GDBPATH, LRMPATH, LRMSHEETNAME)
+
+    print(tncLandsPath, result)
+    print('fin')
 
 if __name__ == '__main__':
     main()
