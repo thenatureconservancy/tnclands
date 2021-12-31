@@ -1,6 +1,7 @@
 #Standard imports
 import os
 import sys
+import pandas as pd
 #---------------------------------------------------------------------
 #Non-standard imports
 import arcpy
@@ -106,7 +107,7 @@ def createTNCLandsFieldList():
     return lstTNCLandsField
     pass
 
-def setPaths(gdbPath, tncLandsFC):
+def setTNCLandsPath(gdbPath, tncLandsFC):
     # #set path to LRM report
     # print('Setting LRM path and sheet/tab name')
     # print(arcpy.AddMessage('Setting LRM path and sheet/tab name'))
@@ -134,8 +135,10 @@ def createLRMTable(gdbPath, lrmPath, lrmSheetName):
             arcpy.Delete_management(os.path.join(gdbPath, 'lrmReport'))
         except arcpy.ExecuteError:
             print(arcpy.GetMessages(2))
+            return False
         except Exception as e:
             print(e.args[0])
+            return False
     #---------------------------------------------------------------------
     #convert LRM Excel report to geodatabase table and create index on LRM tract ID
     print('Converting LRM Excel file/tab to geodatabase table')
@@ -143,31 +146,88 @@ def createLRMTable(gdbPath, lrmPath, lrmSheetName):
         arcpy.ExcelToTable_conversion(lrmPath, os.path.join(gdbPath, 'lrmReport'), lrmSheetName)
     except arcpy.ExecuteError:
         print(arcpy.GetMessages(2))
+        return False
     except Exception as e:
         print(e.args[0])
+        return False
     #---------------------------------------------------------------------
     print('Creating indexes LRM table')
     indexes = arcpy.ListIndexes(os.path.join(gdbPath, 'lrmReport'))
     try:
-        if 'indx_trID' not in indexes: 
-            arcpy.AddIndex_management(os.path.join(gdbPath, 'lrmReport'), ['LRM_Tract_ID'], 'indx_trID')
-        else:
+        if 'indx_trID' in indexes: 
             arcpy.RemoveIndex_management(os.path.join(gdbPath, 'lrmReport'), ['LRM_Tract_ID'])
-            arcpy.AddIndex_management(os.path.join(gdbPath, 'lrmReport'), ['LRM_Tract_ID'], 'indx_trID')
+        else:
+            pass
+        arcpy.AddIndex_management(os.path.join(gdbPath, 'lrmReport'), ['LRM_Tract_ID'], 'indx_trID')
     except arcpy.ExecuteError:
         print(arcpy.GetMessages(2))
+        return False
     except Exception as e:
         print(e.args[0])
-    
+        return False
+
     return True
 
-def createLRMSeachCursor():
-    pass
+def createLRMSeachCursor(gdbPath, tncLandsPath):
+    print("Starting LRM and TNC Lands reconcilation")
+    lrmCursor = arcpy.da.SearchCursor(os.path.join(gdbPath, 'lrmReport'), 'LRM_Tract_ID')
+    lrmTractIDList = []
+    for lrmRow in lrmCursor:
+        lrmTractIDList.append(lrmCursor[0])
+    lrmTractIDList.sort()
+    lrmTractIDSet = set(lrmTractIDList)
+    lrmCount = len(lrmTractIDSet)
+
+    tncLandsCursor = arcpy.da.SearchCursor(tncLandsPath, 'LRM_TR_ID', "TNC_INT IN ('Fee Ownership', 'Conservation Easement')")
+    tncLandsTractIDList = []
+    for tncLandsRow in tncLandsCursor:
+        if tncLandsCursor[0] is not None:
+            tncLandsTractIDList.append(tncLandsCursor[0])
+    tncLandsTractIDList.sort()
+    tncLandsTractIDSet = set(tncLandsTractIDList)
+    tncLandsCount = len(tncLandsTractIDList)
+    
+    print(arcpy.AddMessage(f"Number of Tract IDs in LRM report: {lrmCount}"))
+    print(arcpy.AddMessage(f"Number of Tract IDs in TNC Lands feature class: {tncLandsCount}"))    
+
+    #Tract IDs from the LRM report that are not in TNC Lands
+    diffLRMtoTNCLands = lrmTractIDSet.difference(tncLandsTractIDSet)
+
+    #Tract IDs from TNC Lands that are not in the LRM report
+    diffTNCLandstoLRM = tncLandsTractIDSet.difference(lrmTractIDSet)
+
+    #TractIDs that are in both the LRM eport and TNC Lands
+    intersectLRMtoTNCLands = lrmTractIDSet.intersection(tncLandsTractIDSet)
+
+    outfile = open('inLRM_not_in_TNCLands.txt', 'w')
+    outfile.write("LRM Tract ID, Tract Name, Primary Geocode, Primary Cons Area Name, Interest Code, Interest Acres, Original Protection Date\n")
+    for tractID in diffLRMtoTNCLands:
+        lrmCursor = arcpy.da.SearchCursor(in_table=os.path.join(gdbPath, 'lrmReport'), 
+                                          field_names=['LRM_Tract_ID', 'Tract_Name', 'Primary_Geocode', 'Primary_Cons_area_name', 'Interest_Code', 'Interest_Acres', 'Original_Protection_date'],
+                                          where_clause = f"LRM_Tract_ID = {tractID}")
+        for lrmRow in lrmCursor:
+            outfile.write(f"{lrmRow[0]}, {lrmRow[1]}, {lrmRow[2]}, {lrmRow[3]}, {lrmRow[4]}, {lrmRow[5]}, {lrmRow[6]}\n")
+    outfile.flush()
+    outfile.close()
+
+    outfile = open('inTNCLands_not_in_LRM.txt', 'w')
+    outfile.write("LRM Tract ID, LRM Tract Name, State, Conservation Area Name, TNC Interest, LRM Acres, Protection Date")
+    for tractID in diffTNCLandstoLRM:
+        tncLandsCursor = arcpy.da.SearchCursor(in_table=tncLandsPath, 
+                                                field_names = ['LRM_TR_ID', 'LRM_TR_NA', 'STATE', 'CONS_AREA', 'TNC_INT', 'LRM_ACRES', 'PROT_DATE'], 
+                                                where_clause = f"LRM_TR_ID = {tractID}")
+        for tncRow in tncLandsCursor:
+            outfile.write(f"{tncRow[0]}, {tncRow[1].strip()}, {tncRow[2]}, {tncRow[3]}, {tncRow[4]}, {tncRow[5]}\n")
+    outfile.flush()
+    outfile.close()
+
+    return True
+
 def createTNCLandsSearchCursor():
     pass
 def createTNCLandsUpdateCursor():
     pass
-def updateTNCLands():
+def updateTNCLands(gdbPath, tncLandsPath):
     #start checking LRM fields
     #create search cursor on LRM table
     print('Creating search cursor on LRM report table and update cursor on TNC Lands\nand beginning TNC Lands update process')
@@ -203,10 +263,12 @@ def main():
 
     # print(f"{LRMPATH}, {LRMSHEETNAME}, {GDBPATH}, {FC}")
 
-    tncLandsPath = setPaths(GDBPATH, FC)
-    result = createLRMTable(GDBPATH, LRMPATH, LRMSHEETNAME)
+    tncLandsPath = setTNCLandsPath(GDBPATH, FC)
+    #result = createLRMTable(GDBPATH, LRMPATH, LRMSHEETNAME)
 
-    print(tncLandsPath, result)
+    #print(tncLandsPath, result)
+
+    result = createLRMSeachCursor(GDBPATH, tncLandsPath)
     print('fin')
 
 if __name__ == '__main__':
