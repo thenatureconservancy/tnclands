@@ -1,3 +1,5 @@
 inLRM_not_in_TNCLands.txt
 inTNCLands_not_in_LRM.txt
 snippets.txt
+*.exp
+launch.json
