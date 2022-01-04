@@ -61,29 +61,29 @@ def createMapSymbolDictionary():
     #create map symbol dictionary
     print('Creating map symbol dictionary')
     print(arcpy.AddMessage('Creating map symbol dictionary'))
-    dictMapSymbol = {'Fee Ownership' : 'Fee Ownership',
-                     'Conservation Easement' : 'Conservation Easement', 
-                     'Deed Restrictions' : 'Deed Restrictions',
-                     'Deed Restrictions - MonReq' : 'Deed Restrictions',
-                     'Deed Restrictions - NoMon' : 'Deed Restrictions',
-                     'Management Lease or Agreement' : 'Management Lease or Agreement',
-                     'Timber Lease or Agreement' : 'Management Lease or Agreement',
-                     'Grazing Lease' : 'Management Lease or Agreement',
-                     'Grazing Permit' : 'Management Lease or Agreement',
-                     'Life Estate' : 'Other',
-                     'Right of Way Tract' : 'Right of Way',
-                     'Access Right of Way' : 'Right of Way',
-                     'Assist' : 'Assist',
-                     'Assist - Fee Ownership' : 'Assist',
-                     'Assist - Conservation Easement' : 'Assist',
-                     'Assist - Deed Restriction' : 'Assist',
-                     'Transfer' : 'Transfer',
-                     'Transfer - Fee Ownership' : 'Transfer',
-                     'Transfer - Conservation Easement' : 'Transfer',
-                     'Transfer - Deed Restriction' : 'Transfer',
-                     'Transfer - Life Estate' : 'Transfer',
-                     'Transfer - Management Lease or Agreement' : 'Transfer',
-                     'Transfer - Agreement' : 'Transfer'
+    dictMapSymbol = {'FEE' : 'Fee Ownership',
+                     'EAS' : 'Conservation Easement', 
+                    #  'Deed Restrictions' : 'Deed Restrictions',
+                    #  'Deed Restrictions - MonReq' : 'Deed Restrictions',
+                    #  'Deed Restrictions - NoMon' : 'Deed Restrictions',
+                    #  'Management Lease or Agreement' : 'Management Lease or Agreement',
+                    #  'Timber Lease or Agreement' : 'Management Lease or Agreement',
+                    #  'Grazing Lease' : 'Management Lease or Agreement',
+                    #  'Grazing Permit' : 'Management Lease or Agreement',
+                    #  'Life Estate' : 'Other',
+                    #  'Right of Way Tract' : 'Right of Way',
+                    #  'Access Right of Way' : 'Right of Way',
+                    #  'Assist' : 'Assist',
+                    #  'Assist - Fee Ownership' : 'Assist',
+                    #  'Assist - Conservation Easement' : 'Assist',
+                    #  'Assist - Deed Restriction' : 'Assist',
+                    #  'Transfer' : 'Transfer',
+                    #  'Transfer - Fee Ownership' : 'Transfer',
+                    #  'Transfer - Conservation Easement' : 'Transfer',
+                    #  'Transfer - Deed Restriction' : 'Transfer',
+                    #  'Transfer - Life Estate' : 'Transfer',
+                    #  'Transfer - Management Lease or Agreement' : 'Transfer',
+                    #  'Transfer - Agreement' : 'Transfer'
                      }
     return dictMapSymbol
     pass
@@ -92,9 +92,9 @@ def createMapSymbolDictionary():
 def createLRMFieldList():
     print('Creating LRM field list')
     print(arcpy.AddMessage('Creating LRM field list'))
-    lstLRMField = ['LRM Tract ID', 'Tract Name', 'Country', 'Primary Geocode', 'Primary Cons Area Name', 'Interest Holder', 
-                   'Interest Code','Interest Acres', 'Original Protection Date', 'LRM MU ID', 'Monitoring Unit Name', 
-                   'Primary Fee owner name']
+    lstLRMField = ['LRM_Tract_ID', 'Tract_Name', 'Country', 'Primary_State_name', 'Primary_Cons_area_name', 'Holder', 
+                   'Interest_Code','Interest_Acres', 'Original_Protection_date', 'LRM_MU_ID', 'Monitoring_Unit_name', 
+                   'Primary_Fee_owner_name']
     return lstLRMField
     pass
 
@@ -224,27 +224,63 @@ def createLRMSeachCursor(gdbPath, tncLandsPath):
     return True
 
 def createTNCLandsSearchCursor():
+    '''
+    this function will probably not be implemented
+    '''
     pass
 def createTNCLandsUpdateCursor():
+    '''
+    this function will probably not be implemented
+    '''
     pass
-def updateTNCLands(gdbPath, tncLandsPath):
+def updateTNCLands(gdbPath, tncLandsPath, dictIntCode):
+    recordCount = 0
     #start checking LRM fields
     #create search cursor on LRM table
     print('Creating search cursor on LRM report table and update cursor on TNC Lands\nand beginning TNC Lands update process')
-    lrmCursor = arcpy.da.SearchCursor(os.path.join(gdbPath, 'lrmReport'), ['LRM_Tract_ID', 'Tract_Name'])
+    lrmCursor = arcpy.da.SearchCursor(os.path.join(gdbPath, 'lrmReport'), 
+                                     ['LRM_Tract_ID', 'Tract_Name', 'Country', 'Primary_Geocode', 
+                                      'Primary_Cons_area_name', 'Holder', 'Interest_Code','Interest_Acres', 
+                                      'Original_Protection_date', 'LRM_MU_ID', 'Monitoring_Unit_name', 'Primary_Fee_owner_name'])
     for lrmRow in lrmCursor:
-        print(f"Seach cursor expression from LRM table:\n\tLRM_Tract_ID = {lrmRow[0]} and Tract Name = {lrmRow[1]}")
+        #print(f"Seach cursor expression from LRM table:\n\tLRM_Tract_ID = {lrmRow[0]} and Tract_Name = {lrmRow[1]}")
         tractid = f"{lrmRow[0]}"
         #select matching TNC Lands records
         try:
-            tncLandsCursor = arcpy.da.UpdateCursor(os.path.join(gdbPath, tncLandsPath), ['LRM_TR_ID', 'LRM_TR_NA'], f"LRM_TR_ID = {tractid}")
+            tncLandsCursor = arcpy.da.UpdateCursor(os.path.join(gdbPath, tncLandsPath), 
+                                                  ['LRM_TR_ID', 'LRM_TR_NA', 'COUNTRY', 'STATE', 
+                                                   'CONS_AREA', 'PROTHOLD', 'TNC_INT', 'LRM_ACRES', 
+                                                   'PROT_DATE', 'LRM_MU_ID', 'LRM_MU_NA', 'FEE_OWNER', 
+                                                   'MAP_SYM'], 
+                                                  f"LRM_TR_ID = {tractid}")
             for tncLandsRow in tncLandsCursor:
-                print(f"Return from TNC Lands spatial data:\n\tLRM_TR_ID: {tncLandsRow[0]}\tLRM_TR_NA: {tncLandsRow[1]}")
+                #tncLandsRow[0] = lrmRow[0]
+                tncLandsRow[1] = lrmRow[1]
+                tncLandsRow[2] = lrmRow[2]
+                tncLandsRow[3] = lrmRow[3]
+                tncLandsRow[4] = lrmRow[4]
+                tncLandsRow[5] = lrmRow[5]
+                tncLandsRow[6] = lrmRow[6]
+                tncLandsRow[7] = lrmRow[7]
+                tncLandsRow[8] = lrmRow[8]
+                tncLandsRow[9] = lrmRow[9]
+                tncLandsRow[10] = lrmRow[10]
+                tncLandsRow[11] = lrmRow[11]
+                tncLandsRow[12] = dictIntCode[lrmRow[6]]
+
+                tncLandsCursor.updateRow(tncLandsRow)
+
         except arcpy.ExecuteError:
             print(arcpy.GetMessages(2))
         except Exception as e:
             print(e.args[0])
+            
+        recordCount += 1
+        if recordCount % 50 == 0:
+            print(f"{recordCount} TNC Lands records updated with LRM attributes")
     
+    return True
+
 #---------------------------------------------------------------------
 def main():
     '''
@@ -263,12 +299,15 @@ def main():
 
     # print(f"{LRMPATH}, {LRMSHEETNAME}, {GDBPATH}, {FC}")
 
+    DICTMAPSYMBOL = createMapSymbolDictionary()
+
     tncLandsPath = setTNCLandsPath(GDBPATH, FC)
-    #result = createLRMTable(GDBPATH, LRMPATH, LRMSHEETNAME)
+    result = createLRMTable(GDBPATH, LRMPATH, LRMSHEETNAME)
 
-    #print(tncLandsPath, result)
+    print(tncLandsPath, result)
 
-    result = createLRMSeachCursor(GDBPATH, tncLandsPath)
+    result = updateTNCLands(GDBPATH, tncLandsPath, DICTMAPSYMBOL)
+        
     print('fin')
 
 if __name__ == '__main__':
