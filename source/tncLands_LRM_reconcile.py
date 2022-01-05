@@ -1,7 +1,8 @@
 #Standard imports
 import os
 import sys
-import pandas as pd
+import datetime
+
 #---------------------------------------------------------------------
 #Non-standard imports
 # Non-standard imports
@@ -21,8 +22,7 @@ import arcpy
 arcpy.env.overwriteOutput = True
 #---------------------------------------------------------------------
 '''Outline:
-    set up paths to resources
-    
+    set up paths to script input resources
     convert LRM Excel to geodatabase table
     TODO: check for fields in new table(?)
     
@@ -72,8 +72,8 @@ def createMapSymbolDictionary():
     #create map symbol dictionary
     print('Creating map symbol dictionary')
     print(arcpy.AddMessage('Creating map symbol dictionary'))
-    dictMapSymbol = {'FEE' : 'Fee Ownership',
-                     'EAS' : 'Conservation Easement', 
+    dictMapSymbol = {'Fee Ownership' : 'Fee Ownership',
+                     'Conservation Easement' : 'Conservation Easement', 
                     #  'Deed Restrictions' : 'Deed Restrictions',
                     #  'Deed Restrictions - MonReq' : 'Deed Restrictions',
                     #  'Deed Restrictions - NoMon' : 'Deed Restrictions',
@@ -179,7 +179,7 @@ def createLRMTable(gdbPath, lrmPath, lrmSheetName):
 
     return True
 
-def createLRMSeachCursor(gdbPath, tncLandsPath):
+def createReconciliationReport(gdbPath, tncLandsPath):
     print("Starting LRM and TNC Lands reconcilation")
     lrmCursor = arcpy.da.SearchCursor(os.path.join(gdbPath, 'lrmReport'), 'LRM_Tract_ID')
     lrmTractIDList = []
@@ -189,14 +189,14 @@ def createLRMSeachCursor(gdbPath, tncLandsPath):
     lrmTractIDSet = set(lrmTractIDList)
     lrmCount = len(lrmTractIDSet)
 
-    tncLandsCursor = arcpy.da.SearchCursor(tncLandsPath, 'LRM_TR_ID', "TNC_INT IN ('Fee Ownership', 'Conservation Easement')")
+    tncLandsCursor = arcpy.da.SearchCursor(tncLandsPath, 'LRM_TR_ID', "TNC_INT IN ('Fee Ownership', 'FEE', 'Conservation Easement', 'EAS')")
     tncLandsTractIDList = []
     for tncLandsRow in tncLandsCursor:
         if tncLandsCursor[0] is not None:
             tncLandsTractIDList.append(tncLandsCursor[0])
     tncLandsTractIDList.sort()
     tncLandsTractIDSet = set(tncLandsTractIDList)
-    tncLandsCount = len(tncLandsTractIDList)
+    tncLandsCount = len(tncLandsTractIDSet)
     
     print(arcpy.AddMessage(f"Number of Tract IDs in LRM report: {lrmCount}"))
     print(arcpy.AddMessage(f"Number of Tract IDs in TNC Lands feature class: {tncLandsCount}"))    
@@ -210,7 +210,7 @@ def createLRMSeachCursor(gdbPath, tncLandsPath):
     #TractIDs that are in both the LRM eport and TNC Lands
     intersectLRMtoTNCLands = lrmTractIDSet.intersection(tncLandsTractIDSet)
 
-    outfile = open('inLRM_not_in_TNCLands.txt', 'w')
+    outfile = open(os.path.join(os.path.dirname(gdbPath), 'inLRM_not_in_TNCLands.txt'), 'w')
     outfile.write("LRM Tract ID, Tract Name, Primary Geocode, Primary Cons Area Name, Interest Code, Interest Acres, Original Protection Date\n")
     for tractID in diffLRMtoTNCLands:
         lrmCursor = arcpy.da.SearchCursor(in_table=os.path.join(gdbPath, 'lrmReport'), 
@@ -221,7 +221,7 @@ def createLRMSeachCursor(gdbPath, tncLandsPath):
     outfile.flush()
     outfile.close()
 
-    outfile = open('inTNCLands_not_in_LRM.txt', 'w')
+    outfile = open(os.path.join(os.path.dirname(gdbPath), 'inTNCLands_not_in_LRM.txt'), 'w')
     outfile.write("LRM Tract ID, LRM Tract Name, State, Conservation Area Name, TNC Interest, LRM Acres, Protection Date")
     for tractID in diffTNCLandstoLRM:
         tncLandsCursor = arcpy.da.SearchCursor(in_table=tncLandsPath, 
@@ -234,16 +234,6 @@ def createLRMSeachCursor(gdbPath, tncLandsPath):
 
     return True
 
-def createTNCLandsSearchCursor():
-    '''
-    this function will probably not be implemented
-    '''
-    pass
-def createTNCLandsUpdateCursor():
-    '''
-    this function will probably not be implemented
-    '''
-    pass
 def updateTNCLands(gdbPath, tncLandsPath, dictIntCode):
     recordCount = 0
     #start checking LRM fields
@@ -251,11 +241,19 @@ def updateTNCLands(gdbPath, tncLandsPath, dictIntCode):
     print('Creating search cursor on LRM report table and update cursor on TNC Lands\nand beginning TNC Lands update process')
     lrmCursor = arcpy.da.SearchCursor(os.path.join(gdbPath, 'lrmReport'), 
                                      ['LRM_Tract_ID', 'Tract_Name', 'Country', 'Primary_Geocode', 
-                                      'Primary_Cons_area_name', 'Holder', 'Interest_Code','Interest_Acres', 
+                                      'Primary_Cons_area_name', 'Holder', 'Interest_Code', 'Interest_Acres', 
                                       'Original_Protection_date', 'LRM_MU_ID', 'Monitoring_Unit_name', 'Primary_Fee_owner_name'])
     for lrmRow in lrmCursor:
         #print(f"Seach cursor expression from LRM table:\n\tLRM_Tract_ID = {lrmRow[0]} and Tract_Name = {lrmRow[1]}")
         tractid = f"{lrmRow[0]}"
+
+        if f"{lrmRow[6]}" == 'EAS':
+            lrmInterest = 'Conservation Easement'
+        elif f"{lrmRow[6]}" == 'FEE':
+            lrmInterest = 'Fee Ownership'
+        if f"{lrmRow[2]}" == 'US':
+            lrmCountry = 'United States of America'
+        
         #select matching TNC Lands records
         try:
             tncLandsCursor = arcpy.da.UpdateCursor(os.path.join(gdbPath, tncLandsPath), 
@@ -266,25 +264,25 @@ def updateTNCLands(gdbPath, tncLandsPath, dictIntCode):
                                                   f"LRM_TR_ID = {tractid}")
             for tncLandsRow in tncLandsCursor:
                 #tncLandsRow[0] = lrmRow[0]
-                tncLandsRow[1] = lrmRow[1]
-                tncLandsRow[2] = lrmRow[2]
-                tncLandsRow[3] = lrmRow[3]
-                tncLandsRow[4] = lrmRow[4]
-                tncLandsRow[5] = lrmRow[5]
-                tncLandsRow[6] = lrmRow[6]
-                tncLandsRow[7] = lrmRow[7]
-                tncLandsRow[8] = lrmRow[8]
-                tncLandsRow[9] = lrmRow[9]
-                tncLandsRow[10] = lrmRow[10]
-                tncLandsRow[11] = lrmRow[11]
-                tncLandsRow[12] = dictIntCode[lrmRow[6]]
+                tncLandsRow[1] = lrmRow[1] # 'Tract_Name' -> 'LRM_TR_NA'
+                tncLandsRow[2] = lrmCountry # 'Country' -> 'COUNTRY'
+                tncLandsRow[3] = lrmRow[3] # 'Primary_Geocode' -> 'STATE'
+                tncLandsRow[4] = lrmRow[4] # 'Primary_Cons_area_name' -> 'CONS_AREA'
+                tncLandsRow[5] = lrmRow[5] # 'Holder' -> 'PROTHOLD'
+                tncLandsRow[6] = lrmInterest # 'Interest_Code' -> 'TNC_INT'
+                tncLandsRow[7] = lrmRow[7] # 'Interest_Acres' -> 'LRM_ACRES'
+                tncLandsRow[8] = lrmRow[8] # 'Original_Protection_date' -> 'PROT_DATE'
+                tncLandsRow[9] = lrmRow[9] # 'LRM_MU_ID' -> 'LRM_MU_ID'
+                tncLandsRow[10] = lrmRow[10] # 'Monitoring_Unit_name' -> 'LRM_MU_NA'
+                tncLandsRow[11] = lrmRow[11] # 'Primary_Fee_owner_name' -> 'FEE_OWNER'
+                tncLandsRow[12] = lrmInterest # 'MAP_SYM'
 
                 tncLandsCursor.updateRow(tncLandsRow)
 
         except arcpy.ExecuteError:
-            print(arcpy.GetMessages(2))
+            print(f'in arcpy error {arcpy.GetMessages(2)}')
         except Exception as e:
-            print(e.args[0])
+            print(f'in general python error {e.args[0]}')
             
         recordCount += 1
         if recordCount % 50 == 0:
@@ -298,28 +296,35 @@ def main():
     MAPSYMBOLDICT = createMapSymbolDictionary()
     LRMFIELDLIST = createLRMFieldList()
     TNCLANDSFIELDLIST = createTNCLandsFieldList()
-    LRMPATH = arcpy.GetParameterAsText[0]
-    LRMSHEETNAME = arcpy.GetParameterAsText[1]
-    GDPPATH = arcpy.GetParameterAsText[2]
-    FC = arcpy.GetParameterAsText[3]
     '''
+
+    # LRMPATH = arcpy.GetParameterAsText[0]
+    # LRMSHEETNAME = arcpy.GetParameterAsText[1]
+    # GDBPATH = arcpy.GetParameterAsText[2]
+    # FC = arcpy.GetParameterAsText[3]
+    
     LRMPATH = sys.argv[1]
     LRMSHEETNAME = sys.argv[2]
     GDBPATH = sys.argv[3]
     FC = sys.argv[4]
 
-    # print(f"{LRMPATH}, {LRMSHEETNAME}, {GDBPATH}, {FC}")
+    start = datetime.datetime.now()
+
+    print(f"{LRMPATH}, {LRMSHEETNAME}, {GDBPATH}, {FC}")
 
     DICTMAPSYMBOL = createMapSymbolDictionary()
 
     tncLandsPath = setTNCLandsPath(GDBPATH, FC)
+    
     result = createLRMTable(GDBPATH, LRMPATH, LRMSHEETNAME)
 
     print(tncLandsPath, result)
 
+    result = createReconciliationReport(GDBPATH, tncLandsPath)
+
     result = updateTNCLands(GDBPATH, tncLandsPath, DICTMAPSYMBOL)
-        
-    print('fin')
+    
+    print(f'Finished in {datetime.datetime.now() - start}')
 
 if __name__ == '__main__':
     main()
