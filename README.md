@@ -31,7 +31,7 @@ This section describes the original use-case design when the python script was c
     - Create a reconcilation report, showing the differences between the TNC Lands spatial data and the LRM report records
         - The script will report the LRM records that do not have a corresponding TNC Lands spatial record
         - The script will report the TNC Lands spatial records that do not have a corresponding LRM record
-    - "Note that the LRM report only lists fee properties and conservation easements.  Other conservation protection mechanisms and historical information (transfers) or transactions that did not include a legal interest held by TNC (assists) are not included."
+    - *Note that the LRM report only lists fee properties and conservation easements.  Other conservation protection mechanisms and historical information (transfers) or transactions that did not include a legal interest held by TNC (assists) are not included.*
     - The script will update all of the LRM fields in the TNC Lands table schema, replacing the values in the fields with whatever is in the LRM report.
 - General design considerations:
     - The script does not use classes, just functions
