@@ -4,7 +4,18 @@ import sys
 import pandas as pd
 #---------------------------------------------------------------------
 #Non-standard imports
+# Non-standard imports
 import arcpy
+
+# other imports that may be necessary at a future date
+# import pandas as pd
+# from arcgis.gis import GIS
+# from arcgis.features import FeatureLayer
+# from arcgis.features import FeatureLayerCollection
+# from arcgis.mapping import WebMap
+# from arcgis.geometry import Geometry
+# gis = GIS("home")
+
 #---------------------------------------------------------------------
 #arcpy environment settings
 arcpy.env.overwriteOutput = True
